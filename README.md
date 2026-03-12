@@ -175,7 +175,8 @@ GITHUB_TOKEN=github_pat_xxxxx ./export_owner_repo_users_csv.sh my-user '' ./repo
 
 Notes:
 - This wrapper combines `get_github_owner_repos.sh` and `get_github_repo_users.sh`.
-- CSV columns are `repository,username`.
+- `repository` column is unique (one row per repository).
+- Additional contributors are exported as columns: `user_1`, `user_2`, `user_3`, ...
 
 ## How To Generate A GitHub Token
 

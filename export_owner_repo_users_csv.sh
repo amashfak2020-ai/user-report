@@ -9,7 +9,7 @@ Usage:
 
 Description:
   Combines existing scripts to fetch owner repositories and corresponding users,
-  then exports them to CSV.
+  then exports them to CSV with one unique repository row.
 
 Arguments:
   owner       GitHub owner/user (required)
@@ -22,7 +22,7 @@ Examples:
   GITHUB_TOKEN=github_pat_xxxxx ./export_owner_repo_users_csv.sh my-user '' ./report.csv
 
 Output columns:
-  repository,username
+  repository,user_1,user_2,...
 EOF
 }
 
@@ -105,15 +105,49 @@ while IFS= read -r repo; do
   done <<< "$users_output"
 done < <(run_repos_script)
 
-# Write CSV file.
-{
-  printf 'repository,username\n'
-  while IFS=$'\t' read -r repo user; do
-    escape_csv_field "$repo"
-    printf ','
-    escape_csv_field "$user"
-    printf '\n'
-  done < "$tmp_rows"
-} > "$out_file"
+# Write CSV file with a unique repository column and additional user columns.
+awk -F $'\t' '
+  function esc(v, t) {
+    t = v
+    gsub(/"/, "\"\"", t)
+    return "\"" t "\""
+  }
+
+  {
+    repo = $1
+    user = $2
+
+    if (!(repo in repo_seen)) {
+      repo_seen[repo] = 1
+      repos[++repo_count] = repo
+      user_count[repo] = 0
+    }
+
+    if (user != "" && !((repo SUBSEP user) in user_seen)) {
+      user_seen[repo SUBSEP user] = 1
+      users[repo, ++user_count[repo]] = user
+      if (user_count[repo] > max_users) {
+        max_users = user_count[repo]
+      }
+    }
+  }
+
+  END {
+    printf "repository"
+    for (i = 1; i <= max_users; i++) {
+      printf ",user_%d", i
+    }
+    printf "\n"
+
+    for (r = 1; r <= repo_count; r++) {
+      repo = repos[r]
+      printf "%s", esc(repo)
+      for (i = 1; i <= max_users; i++) {
+        printf ",%s", esc(users[repo, i])
+      }
+      printf "\n"
+    }
+  }
+' "$tmp_rows" > "$out_file"
 
 echo "Export complete: $out_file"
