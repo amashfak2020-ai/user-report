@@ -1,6 +1,6 @@
 # GitHub Repository Users Scripts
 
-This folder contains six Bash scripts for GitHub repository/user lookup.
+This folder contains seven Bash scripts for GitHub repository/user lookup.
 
 ## Files
 
@@ -10,6 +10,7 @@ This folder contains six Bash scripts for GitHub repository/user lookup.
 - `get_github_owner_repos.sh`: Get all repositories for a GitHub owner/user account.
 - `get_github_owner_repos_with_users.sh`: Get all owner repositories and contributor users per repository.
 - `get_github_owner_repos_users_to_excel.sh`: Get owner repositories + users and export to Excel-friendly output.
+- `export_owner_repo_users_csv.sh`: Combine owner-repo and repo-user scripts, then export `repository,username` CSV.
 
 ## Prerequisites
 
@@ -26,6 +27,7 @@ chmod +x get_github_org_repos.sh
 chmod +x get_github_owner_repos.sh
 chmod +x get_github_owner_repos_with_users.sh
 chmod +x get_github_owner_repos_users_to_excel.sh
+chmod +x export_owner_repo_users_csv.sh
 ```
 
 ## 1) Public Repository Script
@@ -154,6 +156,26 @@ Output format:
 - CSV columns: `repository,username`
 - If output ends with `.xlsx`, script tries to create a native Excel file using `python` + `openpyxl`.
 - If `.xlsx` conversion is unavailable, script writes a `.csv` fallback.
+
+## 7) Combined Repositories + Users CSV Script
+
+### Usage
+
+```bash
+./export_owner_repo_users_csv.sh <owner> [token] [output_csv]
+```
+
+### Examples
+
+```bash
+./export_owner_repo_users_csv.sh octocat
+./export_owner_repo_users_csv.sh my-user github_pat_xxxxx report.csv
+GITHUB_TOKEN=github_pat_xxxxx ./export_owner_repo_users_csv.sh my-user '' ./report.csv
+```
+
+Notes:
+- This wrapper combines `get_github_owner_repos.sh` and `get_github_repo_users.sh`.
+- CSV columns are `repository,username`.
 
 ## How To Generate A GitHub Token
 

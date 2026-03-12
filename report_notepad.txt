@@ -1,0 +1,60 @@
+﻿Repository: amashfak2020-ai/.net_app
+Users:
+  - amashfak2020-ai
+
+Repository: amashfak2020-ai/ai-agent
+Users:
+  - amashfak2020-ai
+
+Repository: amashfak2020-ai/amashfak2020-ai
+Users:
+  - amashfak2020-ai
+
+Repository: amashfak2020-ai/claude-flow
+Users:
+  - 6farer
+  - alexx-ftw
+  - amashfak2020-ai
+  - Andycodeman
+  - busla
+  - claude
+  - coygeek
+  - lanemc
+  - michaelozery
+  - mosdehcom
+  - nagyv
+  - ruvnet
+  - tommy-ca
+
+Repository: amashfak2020-ai/devops-directive-docker-course
+Users:
+  - abdelhaqelamraoui
+  - kkzxak47
+  - mesmith027
+  - sidpalas
+  - torgoton
+
+Repository: amashfak2020-ai/docker-ubuntu
+Users:
+  - amashfak2020-ai
+
+Repository: amashfak2020-ai/Java_app
+Users:
+  - amashfak2020-ai
+
+Repository: amashfak2020-ai/new_repo1
+Users:
+  - amashfak2020-ai
+
+Repository: amashfak2020-ai/pager-duty-integration
+Users:
+  - amashfak2020-ai
+
+Repository: amashfak2020-ai/user-report
+Users:
+  - amashfak2020-ai
+
+Repository: amashfak2020-ai/website-simple-healthcheck
+Users:
+  - amashfak2020-ai
+
