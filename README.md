@@ -162,7 +162,7 @@ Output format:
 ### Usage
 
 ```bash
-./export_owner_repo_users_csv.sh <org> [token] [output_csv]
+./export_owner_repo_users_csv.sh <org> [token] [output_csv] [parallelism]
 ```
 
 ### Examples
@@ -170,13 +170,16 @@ Output format:
 ```bash
 ./export_owner_repo_users_csv.sh amashfak2020
 ./export_owner_repo_users_csv.sh amashfak2020 github_pat_xxxxx report.csv
+./export_owner_repo_users_csv.sh amashfak2020 github_pat_xxxxx report.csv 12
 GITHUB_TOKEN=github_pat_xxxxx ./export_owner_repo_users_csv.sh amashfak2020 '' ./report.csv
+GITHUB_PARALLELISM=16 ./export_owner_repo_users_csv.sh amashfak2020
 ```
 
 Notes:
 - This wrapper combines `get_github_org_repos.sh` and `get_github_repo_users.sh`.
 - `repository` column is unique (one row per repository).
 - Additional contributors are exported as columns: `user_1`, `user_2`, `user_3`, ...
+- Fetching contributors supports multithreading via `parallelism` arg or `GITHUB_PARALLELISM` env var.
 
 ## How To Generate A GitHub Token
 
@@ -215,4 +218,32 @@ export GITHUB_TOKEN='your_token_here'
   - Repo has no contributors exposed by the API, or access is insufficient.
 - `bash: /bin/bash not found` on Windows PowerShell:
   - Run scripts in Git Bash or WSL instead of plain PowerShell.
+
+## 8) Automate Monthly Report With GitHub Actions
+
+A workflow is included at:
+
+`.github/workflows/monthly-github-report.yml`
+
+It runs on the 1st day of every month at `02:00 UTC`, and can also be run manually from the Actions tab.
+
+### Required Repository Settings
+
+1. Repository secret:
+   - Name: `GH_PAT`
+   - Value: GitHub PAT with access to the target organization repositories.
+2. Repository variable:
+   - Name: `GITHUB_ORG`
+   - Value: organization name (example: `amashfak2020`).
+3. Optional repository variable:
+   - Name: `GITHUB_PARALLELISM`
+   - Value: number of concurrent requests (example: `8` or `12`).
+
+### What The Workflow Does
+
+- Runs `export_owner_repo_users_csv.sh` monthly.
+- Writes report to `reports/monthly/report-YYYY-MM.csv`.
+- Updates `reports/monthly/latest.csv`.
+- Uploads `reports/monthly/` as a workflow artifact.
+- Commits and pushes report changes back to the repository.
 # Dormant_user_report

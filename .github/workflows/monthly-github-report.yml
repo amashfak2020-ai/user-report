@@ -1,0 +1,84 @@
+name: Monthly GitHub Repo Users Report
+
+on:
+  schedule:
+    # Runs at 02:00 UTC on the 1st day of every month.
+    - cron: '0 2 1 * *'
+  workflow_dispatch:
+    inputs:
+      org:
+        description: GitHub organization name (overrides repository variable)
+        required: false
+        type: string
+      parallelism:
+        description: Concurrent repo-user requests
+        required: false
+        default: '8'
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: monthly-github-report
+  cancel-in-progress: false
+
+jobs:
+  generate-report:
+    runs-on: ubuntu-latest
+    env:
+      ORG_NAME: ${{ inputs.org || vars.GITHUB_ORG }}
+      PARALLELISM: ${{ inputs.parallelism || vars.GITHUB_PARALLELISM || '8' }}
+      GH_PAT: ${{ secrets.GH_PAT }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate required configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${ORG_NAME:-}" ]]; then
+            echo "Missing org name. Set repository variable GITHUB_ORG or provide workflow_dispatch input 'org'." >&2
+            exit 1
+          fi
+          if [[ -z "${GH_PAT:-}" ]]; then
+            echo "Missing GH_PAT secret. Add a PAT with access to the target organization repositories." >&2
+            exit 1
+          fi
+
+      - name: Make scripts executable
+        shell: bash
+        run: chmod +x ./export_owner_repo_users_csv.sh ./get_github_org_repos.sh ./get_github_repo_users.sh
+
+      - name: Generate monthly CSV report
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/monthly
+          month_stamp="$(date -u +'%Y-%m')"
+          out_file="reports/monthly/report-${month_stamp}.csv"
+          ./export_owner_repo_users_csv.sh "${ORG_NAME}" "${GH_PAT}" "${out_file}" "${PARALLELISM}"
+          cp "${out_file}" reports/monthly/latest.csv
+
+      - name: Upload report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: github-repo-users-report-${{ github.run_number }}
+          path: reports/monthly/
+          if-no-files-found: error
+
+      - name: Commit and push updated report files
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- reports/monthly; then
+            echo "No report changes to commit."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/monthly
+          git commit -m "chore(report): monthly GitHub repo users report"
+          git push

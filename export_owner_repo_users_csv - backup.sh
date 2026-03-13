@@ -5,7 +5,7 @@ set -euo pipefail
 usage() {
   cat <<'EOF'
 Usage:
-  ./export_owner_repo_users_csv.sh <org> [token] [output_csv] [parallelism]
+  ./export_owner_repo_users_csv.sh <org> [token] [output_csv]
 
 Description:
   Combines existing scripts to fetch organization repositories and corresponding users,
@@ -15,14 +15,11 @@ Arguments:
   org         GitHub organization (required)
   token       Optional GitHub token (or set GITHUB_TOKEN)
   output_csv  Output CSV path (default: org_repo_users.csv)
-  parallelism Number of concurrent repo-user requests (default: 8)
 
 Examples:
   ./export_owner_repo_users_csv.sh amashfak2020
   ./export_owner_repo_users_csv.sh amashfak2020 github_pat_xxxxx report.csv
-  ./export_owner_repo_users_csv.sh amashfak2020 github_pat_xxxxx report.csv 12
   GITHUB_TOKEN=github_pat_xxxxx ./export_owner_repo_users_csv.sh amashfak2020 '' ./report.csv
-  GITHUB_PARALLELISM=16 ./export_owner_repo_users_csv.sh amashfak2020
 
 Output columns:
   repository,user_1,user_2,...
@@ -34,7 +31,7 @@ if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
   exit 0
 fi
 
-if [[ $# -lt 1 || $# -gt 4 ]]; then
+if [[ $# -lt 1 || $# -gt 3 ]]; then
   usage
   exit 1
 fi
@@ -43,15 +40,9 @@ org="$1"
 cli_token="${2:-}"
 token="${cli_token:-${GITHUB_TOKEN:-}}"
 out_file="${3:-org_repo_users.csv}"
-parallelism="${4:-${GITHUB_PARALLELISM:-8}}"
 
 if [[ -z "$org" ]]; then
   echo "Error: org is required" >&2
-  exit 1
-fi
-
-if ! [[ "$parallelism" =~ ^[1-9][0-9]*$ ]]; then
-  echo "Error: parallelism must be a positive integer (received: $parallelism)" >&2
   exit 1
 fi
 
@@ -95,50 +86,24 @@ run_users_script() {
 mkdir -p "$(dirname "$out_file")"
 
 tmp_rows="$(mktemp)"
-tmp_repos="$(mktemp)"
-tmp_dir="$(mktemp -d)"
-trap 'rm -f "$tmp_rows" "$tmp_repos"; rm -rf "$tmp_dir"' EXIT
+trap 'rm -f "$tmp_rows"' EXIT
 
-run_repo_worker() {
-  local repo="$1"
-  local row_file="$2"
-  local users_output
+# Build TSV rows first: repository<TAB>username
+while IFS= read -r repo; do
+  [[ -z "$repo" ]] && continue
 
   users_output="$(run_users_script "$repo" 2>/dev/null || true)"
   if [[ -z "$users_output" ]]; then
     # Keep repo in the report even if contributor lookup is empty.
-    printf '%s\t\n' "$repo" > "$row_file"
-    return
+    printf '%s\t\n' "$repo" >> "$tmp_rows"
+    continue
   fi
 
-  : > "$row_file"
   while IFS= read -r user; do
     [[ -z "$user" ]] && continue
-    printf '%s\t%s\n' "$repo" "$user" >> "$row_file"
+    printf '%s\t%s\n' "$repo" "$user" >> "$tmp_rows"
   done <<< "$users_output"
-}
-
-# Fetch repository list once.
-run_repos_script > "$tmp_repos"
-mapfile -t repos < "$tmp_repos"
-
-# Build TSV rows concurrently using one file per repository to avoid write races.
-for i in "${!repos[@]}"; do
-  repo="${repos[$i]}"
-  [[ -z "$repo" ]] && continue
-
-  while (( $(jobs -pr | wc -l) >= parallelism )); do
-    sleep 0.1
-  done
-
-  run_repo_worker "$repo" "$tmp_dir/$i.tsv" &
-done
-
-wait
-
-for i in "${!repos[@]}"; do
-  [[ -f "$tmp_dir/$i.tsv" ]] && cat "$tmp_dir/$i.tsv" >> "$tmp_rows"
-done
+done < <(run_repos_script)
 
 # Write CSV file with a unique repository column and additional user columns.
 awk -F $'\t' '
